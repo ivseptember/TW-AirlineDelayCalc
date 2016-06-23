@@ -131,6 +131,11 @@ namespace TestMvcSite
                 resBuilder.AppendLine("Command>" + cmd.CommandText);
                 resBuilder.AppendFormat("Return Value = {0}\n", cmd.ExitStatus);
 
+                Regex pattern = new Regex(@"(?<taskLength>Job 0 finished.*)");
+                Match match = pattern.Match(cmd.Result);
+                string taskLength = match.Groups["taskLength"].Value;
+                resBuilder.AppendLine(taskLength);
+
                 string[] separator = { "\n\n" };
                 var resParts = cmd.Result.Split(separator, StringSplitOptions.RemoveEmptyEntries);
 
@@ -138,8 +143,8 @@ namespace TestMvcSite
                 {
                     if (part.Contains("LogType:stdout"))
                     {
-                        Regex pattern = new Regex(@"LogLength:(?<logLength>\d+)");
-                        Match match = pattern.Match(part);
+                        pattern = new Regex(@"LogLength:(?<logLength>\d+)");
+                        match = pattern.Match(part);
                         if (match.Groups["logLength"].Value != "0")
                             resBuilder.AppendLine(part);
                     }
