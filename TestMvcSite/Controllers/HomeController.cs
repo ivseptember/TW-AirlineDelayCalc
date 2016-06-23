@@ -42,7 +42,7 @@ namespace TestMvcSite.Controllers
 
                     if (number > 0)
                     {
-                        execResult = SshWrapper.ProcessFile(path, number);
+                        execResult = SshWrapper.ProcessTask(path, number);
                         printResult = true;
                     }
                     else

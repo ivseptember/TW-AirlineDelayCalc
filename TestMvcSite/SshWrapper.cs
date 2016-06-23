@@ -8,17 +8,27 @@ namespace TestMvcSite
 {
     public class SshWrapper
     {
-        public static string ProcessFile(string uploadfile, int executorcount)
+        static int port = 57322;
+        static string host = "79.170.167.30";
+        static string username = "user3";
+        static string password = "userIntelPhi3";
+        static string workingdirectory = "/home/user3/shamanov.i/JavaSparkAirlineDelay/";
+
+        public static string ProcessTask(string uploadfile, int executorcount)
         {
             StringBuilder resBuilder = new StringBuilder();
 
-            const int port = 57322;
-            const string host = "79.170.167.30";
-            const string username = "user3";
-            const string password = "userIntelPhi3";
-            const string workingdirectory = "/home/user3/shamanov.i/JavaSparkAirlineDelay/";
-
             // Upload data file
+            UploadFile(uploadfile, resBuilder);
+
+            // Execute a (SHELL) Commands 
+            RunDelaysCalculation(uploadfile, resBuilder);
+
+            return resBuilder.ToString();
+        }
+
+        private static void UploadFile(string uploadfile, StringBuilder resBuilder)
+        {
             resBuilder.AppendLine("Creating client and connecting");
             using (var sftpclient = new SftpClient(host, port, username, password))
             {
@@ -35,8 +45,10 @@ namespace TestMvcSite
                     sftpclient.UploadFile(fileStream, Path.GetFileName(uploadfile));
                 }
             }
+        }
 
-            // Execute a (SHELL) Commands 
+        private static void RunDelaysCalculation(string uploadfile, StringBuilder resBuilder)
+        {
             using (var sshclient = new SshClient(host, port, username, password))
             {
                 int retValue = 0;
@@ -44,63 +56,83 @@ namespace TestMvcSite
                 string result = "";
 
                 sshclient.Connect();
+                retValue = LoadDataToHDFS(uploadfile, resBuilder, sshclient);
 
-                using (var cmd = sshclient.CreateCommand("ssh node23 'cd ~/shamanov.i/JavaSparkAirlineDelay/ && hadoop fs -copyFromLocal -f " + Path.GetFileName(uploadfile) + " /user/user3/shamanov.i/JavaSparkAirlineDelay'"))
+                if (retValue == 0)
                 {
-                    cmd.Execute();
-                    resBuilder.AppendLine("Command>" + cmd.CommandText);
-                    resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
-
-                    retValue = cmd.ExitStatus;
+                    CalculateDelays(uploadfile, resBuilder, sshclient, out retValue, out result);
                 }
 
                 if (retValue == 0)
                 {
-                    using (var cmd = sshclient.CreateCommand("ssh node23 'cd ~/shamanov.i/JavaSparkAirlineDelay/ && spark-submit --class JavaSparkAirlineDelay --master yarn --deploy-mode cluster --executor-memory 1024m --num-executors 2 JavaSparkAirlineDelay.jar shamanov.i/JavaSparkAirlineDelay/" + Path.GetFileName(uploadfile) + "'"))
-                    {
-                        cmd.Execute();
-                        resBuilder.AppendLine("Command>" + cmd.CommandText);
-                        resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
-
-                        var reader = new StreamReader(cmd.ExtendedOutputStream);
-                        result = reader.ReadToEnd();
-
-                        retValue = cmd.ExitStatus;
-                    }
+                    GetLogsFromYarn(resBuilder, sshclient, out retValue, out runId, result);
                 }
 
                 if (retValue == 0)
                 {
-                    Regex pattern = new Regex(@"tracking URL:.*proxy\/(?<runId>[^\/]+)\/");
-                    Match match = pattern.Match(result);
-                    runId = match.Groups["runId"].Value;
-
-                    using (var cmd = sshclient.CreateCommand("ssh node23 'cd ~/shamanov.i/JavaSparkAirlineDelay/logs && yarn logs -applicationId " + runId + " > " + runId + ".log'"))
-                    {
-                        cmd.Execute();
-                        resBuilder.AppendLine("Command>" + cmd.CommandText);
-                        resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
-
-                        retValue = cmd.ExitStatus;
-                    }
-                }
-
-                if (retValue == 0)
-                {
-                    using (var cmd = sshclient.CreateCommand("ssh node23 'cd ~/shamanov.i/JavaSparkAirlineDelay/logs && cat " + runId + ".log'"))
-                    {
-                        cmd.Execute();
-                        resBuilder.AppendLine("Command>" + cmd.CommandText);
-                        resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
-
-                        resBuilder.AppendLine(cmd.Result);
-                    }
+                    LoadResults(resBuilder, sshclient, runId);
                 }
 
                 sshclient.Disconnect();
             }
+        }
 
-            return resBuilder.ToString();
+        private static int LoadDataToHDFS(string uploadfile, StringBuilder resBuilder, SshClient sshclient)
+        {
+            int retValue;
+            using (var cmd = sshclient.CreateCommand("ssh node23 'cd ~/shamanov.i/JavaSparkAirlineDelay/ && hadoop fs -copyFromLocal -f " + Path.GetFileName(uploadfile) + " /user/user3/shamanov.i/JavaSparkAirlineDelay'"))
+            {
+                cmd.Execute();
+                resBuilder.AppendLine("Command>" + cmd.CommandText);
+                resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
+
+                retValue = cmd.ExitStatus;
+            }
+
+            return retValue;
+        }
+
+        private static void CalculateDelays(string uploadfile, StringBuilder resBuilder, SshClient sshclient, out int retValue, out string result)
+        {
+            using (var cmd = sshclient.CreateCommand("ssh node23 'cd ~/shamanov.i/JavaSparkAirlineDelay/ && spark-submit --class JavaSparkAirlineDelay --master yarn --deploy-mode cluster --executor-memory 1024m --num-executors 2 JavaSparkAirlineDelay.jar shamanov.i/JavaSparkAirlineDelay/" + Path.GetFileName(uploadfile) + "'"))
+            {
+                cmd.Execute();
+                resBuilder.AppendLine("Command>" + cmd.CommandText);
+                resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
+
+                var reader = new StreamReader(cmd.ExtendedOutputStream);
+                result = reader.ReadToEnd();
+
+                retValue = cmd.ExitStatus;
+            }
+        }
+
+        private static void GetLogsFromYarn(StringBuilder resBuilder, SshClient sshclient, out int retValue, out string runId, string result)
+        {
+            Regex pattern = new Regex(@"tracking URL:.*proxy\/(?<runId>[^\/]+)\/");
+            Match match = pattern.Match(result);
+            runId = match.Groups["runId"].Value;
+
+            using (var cmd = sshclient.CreateCommand("ssh node23 'cd ~/shamanov.i/JavaSparkAirlineDelay/logs && yarn logs -applicationId " + runId + " > " + runId + ".log'"))
+            {
+                cmd.Execute();
+                resBuilder.AppendLine("Command>" + cmd.CommandText);
+                resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
+
+                retValue = cmd.ExitStatus;
+            }
+        }
+
+        private static void LoadResults(StringBuilder resBuilder, SshClient sshclient, string runId)
+        {
+            using (var cmd = sshclient.CreateCommand("ssh node23 'cd ~/shamanov.i/JavaSparkAirlineDelay/logs && cat " + runId + ".log'"))
+            {
+                cmd.Execute();
+                resBuilder.AppendLine("Command>" + cmd.CommandText);
+                resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
+
+                resBuilder.AppendLine(cmd.Result);
+            }
         }
     }
 }
