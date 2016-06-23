@@ -1,0 +1,22 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<div class="container body-content">
+    <h2>Set up task:</h2>
+    @using (Html.BeginForm("Upload", "Home", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        <h4>Source file:</h4>
+        <input type="file" name="file" />
+        <br />
+        <h4>Number of executors:</h4>
+        <input type="number" name="number" placeholder="Number of executors..." />
+        <br />
+        <br />
+        <input type="submit" name="Submit" id="Submit" value="Start task!" />
+        <br />
+        <br />
+    }
+    <h2>@ViewBag.ResultTitle</h2>
+    <div>@ViewBag.ResultBody</div>
+</div>
