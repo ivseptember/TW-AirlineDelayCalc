@@ -17,6 +17,13 @@
         <br />
         <br />
     }
-    <h2>@ViewBag.ResultTitle</h2>
-    <div>@ViewBag.ResultBody</div>
+    @if (ViewBag.ShowResult)
+    {
+        <h2>@ViewBag.ResultTitle</h2>
+        <textarea id="ResultBody"
+                  name="ResultBody"
+                  rows="20"
+                  cols="120" 
+                  style="max-width: none">@ViewBag.ResultBody</textarea>
+    }
 </div>

@@ -33,14 +33,14 @@ namespace TestMvcSite
             using (var sftpclient = new SftpClient(host, port, username, password))
             {
                 sftpclient.Connect();
-                resBuilder.AppendFormat("Connected to {0}", host);
+                resBuilder.AppendFormat("Connected to {0}\n", host);
 
                 sftpclient.ChangeDirectory(workingdirectory);
-                resBuilder.AppendFormat("Changed directory to {0}", workingdirectory);
+                resBuilder.AppendFormat("Changed directory to {0}\n", workingdirectory);
 
                 using (var fileStream = new FileStream(uploadfile, FileMode.Open))
                 {
-                    resBuilder.AppendFormat("Uploading {0} ({1:N0} bytes)", uploadfile, fileStream.Length);
+                    resBuilder.AppendFormat("Uploading {0} ({1:N0} bytes)\n\n", uploadfile, fileStream.Length);
                     sftpclient.BufferSize = 4 * 1024; // bypass Payload error large files
                     sftpclient.UploadFile(fileStream, Path.GetFileName(uploadfile));
                 }
@@ -84,7 +84,7 @@ namespace TestMvcSite
             {
                 cmd.Execute();
                 resBuilder.AppendLine("Command>" + cmd.CommandText);
-                resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
+                resBuilder.AppendFormat("Return Value = {0}\n\n", cmd.ExitStatus);
 
                 retValue = cmd.ExitStatus;
             }
@@ -98,7 +98,7 @@ namespace TestMvcSite
             {
                 cmd.Execute();
                 resBuilder.AppendLine("Command>" + cmd.CommandText);
-                resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
+                resBuilder.AppendFormat("Return Value = {0}\n\n", cmd.ExitStatus);
 
                 var reader = new StreamReader(cmd.ExtendedOutputStream);
                 result = reader.ReadToEnd();
@@ -117,7 +117,7 @@ namespace TestMvcSite
             {
                 cmd.Execute();
                 resBuilder.AppendLine("Command>" + cmd.CommandText);
-                resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
+                resBuilder.AppendFormat("Return Value = {0}\n\n", cmd.ExitStatus);
 
                 retValue = cmd.ExitStatus;
             }
@@ -129,7 +129,7 @@ namespace TestMvcSite
             {
                 cmd.Execute();
                 resBuilder.AppendLine("Command>" + cmd.CommandText);
-                resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
+                resBuilder.AppendFormat("Return Value = {0}\n", cmd.ExitStatus);
 
                 string[] separator = { "\n\n" };
                 var resParts = cmd.Result.Split(separator, StringSplitOptions.RemoveEmptyEntries);

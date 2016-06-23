@@ -10,15 +10,19 @@ namespace TestMvcSite.Controllers
     public class HomeController : Controller
     {
         public static bool printResult = false;
-        public static string execResult;
+        public static string execResult = "";
 
         public ActionResult Index()
         {
+            ViewBag.ShowResult = printResult;
+
             if (printResult)
             {
-                ViewBag.ResultTitle = "Task result:";
+                ViewBag.ResultTitle = "Task logs:";
                 ViewBag.ResultBody = execResult.ToString();
+
                 printResult = false;
+                execResult = "";
             }
             
             return View();
