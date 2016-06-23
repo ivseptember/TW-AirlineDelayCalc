@@ -131,7 +131,19 @@ namespace TestMvcSite
                 resBuilder.AppendLine("Command>" + cmd.CommandText);
                 resBuilder.AppendFormat("Return Value = {0}", cmd.ExitStatus);
 
-                resBuilder.AppendLine(cmd.Result);
+                string[] separator = { "\n\n" };
+                var resParts = cmd.Result.Split(separator, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var part in resParts)
+                {
+                    if (part.Contains("LogType:stdout"))
+                    {
+                        Regex pattern = new Regex(@"LogLength:(?<logLength>\d+)");
+                        Match match = pattern.Match(part);
+                        if (match.Groups["logLength"].Value != "0")
+                            resBuilder.AppendLine(part);
+                    }
+                }
             }
         }
     }
